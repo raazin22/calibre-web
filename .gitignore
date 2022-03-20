@@ -14,6 +14,7 @@ dist/
 executable/
 build/
 vendor/
+.venv/
 .eggs/
 *.egg-info/
 .installed.cfg
