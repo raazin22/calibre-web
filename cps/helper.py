@@ -708,7 +708,7 @@ def get_book_cover_internal(book, use_generic_cover_on_failure):
                 if path:
                     return redirect(path)
                 else:
-                    log.error('%s/cover.jpg not found on Google Drive', book.path)
+                    log.error('{}/cover.jpg not found on Google Drive'.format(book.path))
                     return get_cover_on_failure(use_generic_cover_on_failure)
             except Exception as ex:
                 log.error_or_exception(ex)
@@ -951,24 +951,6 @@ def check_valid_domain(domain_text):
     sql = "SELECT * FROM registration WHERE (:domain LIKE domain and allow = 0);"
     result = ub.session.query(ub.Registration).from_statement(text(sql)).params(domain=domain_text).all()
     return not len(result)
-
-
-def get_cc_columns(filter_config_custom_read=False):
-    tmpcc = calibre_db.session.query(db.CustomColumns)\
-        .filter(db.CustomColumns.datatype.notin_(db.cc_exceptions)).all()
-    cc = []
-    r = None
-    if config.config_columns_to_ignore:
-        r = re.compile(config.config_columns_to_ignore)
-
-    for col in tmpcc:
-        if filter_config_custom_read and config.config_read_column and config.config_read_column == col.id:
-            continue
-        if r and r.match(col.name):
-            continue
-        cc.append(col)
-
-    return cc
 
 
 def get_download_link(book_id, book_format, client):

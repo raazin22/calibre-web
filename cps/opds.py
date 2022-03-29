@@ -85,7 +85,7 @@ def feed_osd():
 @requires_basic_auth_if_no_ano
 def feed_cc_search(query):
     # Handle strange query from Libera Reader with + instead of spaces
-    plus_query = unquote_plus(request.base_url.split('/opds/search/')[1]).strip()
+    plus_query = unquote_plus(request.environ['RAW_URI'].split('/opds/search/')[1]).strip()
     return feed_search(plus_query)
 
 
@@ -467,7 +467,7 @@ def feed_unread_books():
 
 def feed_search(term):
     if term:
-        entries, __, ___ = calibre_db.get_search_results(term, config_read_column=config.config_read_column)
+        entries, __, ___ = calibre_db.get_search_results(term, config=config)
         entries_count = len(entries) if len(entries) > 0 else 1
         pagination = Pagination(1, entries_count, entries_count)
         return render_xml_template('feed.xml', searchterm=term, entries=entries, pagination=pagination)
