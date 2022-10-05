@@ -216,7 +216,8 @@ class TaskEmail(CalibreTask):
         log.debug("E-mail send successfully")
 
     def send_gmail_email(self, message):
-        return gmail.send_messsage(self.settings.get('mail_gmail_token', None), message)
+        gmail.send_messsage(self.settings.get('mail_gmail_token', None), message)
+        self._handleSuccess()
 
     @property
     def progress(self):
