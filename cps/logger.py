@@ -29,7 +29,7 @@ from .constants import CONFIG_DIR as _CONFIG_DIR
 ACCESS_FORMATTER_GEVENT  = Formatter("%(message)s")
 ACCESS_FORMATTER_TORNADO = Formatter("[%(asctime)s] %(message)s")
 
-FORMATTER           = Formatter("[%(asctime)s] %(levelname)5s {%(name)s:%(lineno)d} %(message)s")
+FORMATTER           = Formatter("[%(asctime)s] %(levelname)5s {%(filename)s:%(lineno)d} %(message)s")
 DEFAULT_LOG_LEVEL   = logging.INFO
 DEFAULT_LOG_FILE    = os.path.join(_CONFIG_DIR, "calibre-web.log")
 DEFAULT_ACCESS_LOG  = os.path.join(_CONFIG_DIR, "access.log")
@@ -42,17 +42,12 @@ logging.addLevelName(logging.CRITICAL, "CRIT")
 
 class _Logger(logging.Logger):
 
-    def error_or_exception(self, message, stacklevel=2, *args, **kwargs):
-        if sys.version_info > (3, 7):
-            if is_debug_enabled():
-                self.exception(message, stacklevel=stacklevel, *args, **kwargs)
-            else:
-                self.error(message, stacklevel=stacklevel, *args, **kwargs)
+    def error_or_exception(self, message, stacklevel=1, *args, **kwargs):
+        is_debug = self.getEffectiveLevel() <= logging.DEBUG
+        if not is_debug:
+            self.exception(message, stacklevel=stacklevel, *args, **kwargs)
         else:
-            if is_debug_enabled():
-                self.exception(message, stack_info=True, *args, **kwargs)
-            else:
-                self.error(message, *args, **kwargs)
+            self.error(message, stacklevel=stacklevel, *args, **kwargs)
 
     def debug_no_auth(self, message, *args, **kwargs):
         message = message.strip("\r\n")
@@ -150,7 +145,7 @@ def setup(log_file, log_level=None):
     else:
         try:
             file_handler = RotatingFileHandler(log_file, maxBytes=100000, backupCount=2, encoding='utf-8')
-        except IOError:
+        except (IOError, PermissionError):
             if log_file == DEFAULT_LOG_FILE:
                 raise
             file_handler = RotatingFileHandler(DEFAULT_LOG_FILE, maxBytes=100000, backupCount=2, encoding='utf-8')
@@ -177,7 +172,7 @@ def create_access_log(log_file, log_name, formatter):
     access_log.setLevel(logging.INFO)
     try:
         file_handler = RotatingFileHandler(log_file, maxBytes=50000, backupCount=2, encoding='utf-8')
-    except IOError:
+    except (IOError, PermissionError):
         if log_file == DEFAULT_ACCESS_LOG:
             raise
         file_handler = RotatingFileHandler(DEFAULT_ACCESS_LOG, maxBytes=50000, backupCount=2, encoding='utf-8')

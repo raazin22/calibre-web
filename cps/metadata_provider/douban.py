@@ -169,7 +169,8 @@ class Douban(Metadata):
             ),
         )
 
-        html = etree.HTML(r.content.decode("utf8"))
+        decode_content = r.content.decode("utf8")
+        html = etree.HTML(decode_content)
 
         match.title = html.xpath(self.TITTLE_XPATH)[0].text
         match.cover = html.xpath(
@@ -184,7 +185,7 @@ class Douban(Metadata):
         if len(tag_elements):
             match.tags = [tag_element.text for tag_element in tag_elements]
         else:
-            match.tags = self._get_tags(html.text)
+            match.tags = self._get_tags(decode_content)
 
         description_element = html.xpath(self.DESCRIPTION_XPATH)
         if len(description_element):
@@ -216,7 +217,8 @@ class Douban(Metadata):
 
         return match
 
-    def _clean_date(self, date: str) -> str:
+    @staticmethod
+    def _clean_date(date: str) -> str:
         """
         Clean up the date string to be in the format YYYY-MM-DD
 

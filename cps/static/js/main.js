@@ -20,7 +20,7 @@ function getPath() {
     return jsFileLocation.substr(0, jsFileLocation.search("/static/js/libs/jquery.min.js"));  // the js folder path
 }
 
-function postButton(event, action){
+function postButton(event, action, location=""){
     event.preventDefault();
     var newForm = jQuery('<form>', {
         "action": action,
@@ -30,7 +30,14 @@ function postButton(event, action){
         'name': 'csrf_token',
         'value': $("input[name=\'csrf_token\']").val(),
         'type': 'hidden'
-    })).appendTo('body');
+    })).appendTo('body')
+    if(location !== "") {
+        newForm.append(jQuery('<input>', {
+            'name': 'location',
+            'value': location,
+            'type': 'hidden'
+        })).appendTo('body');
+    }
     newForm.submit();
 }
 
@@ -42,7 +49,7 @@ function elementSorter(a, b) {
     return 0;
 }
 
-// Generic control/related handler to show/hide fields based on a checkbox' value
+// Generic control/related handler to show/hide fields based on a 'checkbox' value
 // e.g.
 //  <input type="checkbox" data-control="stuff-to-show">
 //  <div data-related="stuff-to-show">...</div>
@@ -56,7 +63,7 @@ $(document).on("change", "input[type=\"checkbox\"][data-control]", function () {
     });
 });
 
-// Generic control/related handler to show/hide fields based on a select' value
+// Generic control/related handler to show/hide fields based on a 'select' value
 $(document).on("change", "select[data-control]", function() {
     var $this = $(this);
     var name = $this.data("control");
@@ -72,7 +79,7 @@ $(document).on("change", "select[data-control]", function() {
     }
 });
 
-// Generic control/related handler to show/hide fields based on a select' value
+// Generic control/related handler to show/hide fields based on a 'select' value
 // this one is made to show all values if select value is not 0
 $(document).on("change", "select[data-controlall]", function() {
     var $this = $(this);
@@ -123,8 +130,13 @@ $(".container-fluid").bind('drop', function (e) {
             }
         });
         if (dt.files.length) {
-            $("#btn-upload")[0].files = dt.files;
-            $("#form-upload").submit();
+            if($("#btn-upload-format").length) {
+                $("#btn-upload-format")[0].files = dt.files;
+                $("#form-upload-format").submit();
+            } else {
+                $("#btn-upload")[0].files = dt.files;
+                $("#form-upload").submit();
+            }
         }
     }
 });
@@ -133,12 +145,25 @@ $("#btn-upload").change(function() {
     $("#form-upload").submit();
 });
 
+$("#btn-upload-format").change(function() {
+    $("#form-upload-format").submit();
+});
+
+
 $("#form-upload").uploadprogress({
-    redirect_url: getPath() + "/", //"{{ url_for('web.index')}}",
-    uploadedMsg: $("#form-upload").data("message"), //"{{_('Upload done, processing, please wait...')}}",
-    modalTitle: $("#form-upload").data("title"), //"{{_('Uploading...')}}",
-    modalFooter: $("#form-upload").data("footer"), //"{{_('Close')}}",
-    modalTitleFailed: $("#form-upload").data("failed") //"{{_('Error')}}"
+    redirect_url: getPath() + "/",
+    uploadedMsg: $("#form-upload").data("message"),
+    modalTitle: $("#form-upload").data("title"),
+    modalFooter: $("#form-upload").data("footer"),
+    modalTitleFailed: $("#form-upload").data("failed")
+});
+
+$("#form-upload-format").uploadprogress({
+    redirect_url: getPath() + "/",
+    uploadedMsg: $("#form-upload-format").data("message"),
+    modalTitle: $("#form-upload-format").data("title"),
+    modalFooter: $("#form-upload-format").data("footer"),
+    modalTitleFailed: $("#form-upload-format").data("failed")
 });
 
 $(document).ready(function() {
@@ -153,15 +178,21 @@ $(document).ready(function() {
 
 $(".session").click(function() {
     window.sessionStorage.setItem("back", window.location.pathname);
+    window.sessionStorage.setItem("search", window.location.search);
 });
 
 $("#back").click(function() {
    var loc = sessionStorage.getItem("back");
+   var param = sessionStorage.getItem("search");
    if (!loc) {
        loc = $(this).data("back");
    }
    sessionStorage.removeItem("back");
-   window.location.href = loc;
+   sessionStorage.removeItem("search");
+   if (param === null) {
+       param = "";
+   }
+   window.location.href = loc + param;
 
 });
 
@@ -198,10 +229,12 @@ $("#delete_confirm").click(function(event) {
         postButton(event, getPath() + "/delete/" + deleteId + "/" + bookFormat);
     } else {
         if (ajaxResponse) {
-            path = getPath() + "/ajax/delete/" + deleteId;
             $.ajax({
-                method:"post",
-                url: path,
+                url: getPath() + "/ajax/deletebook",
+                method: "post",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                data: JSON.stringify({"bookid": [deleteId]}),
                 timeout: 900,
                 success:function(data) {
                     data.forEach(function(item) {
@@ -212,17 +245,20 @@ $("#delete_confirm").click(function(event) {
                             $( ".navbar" ).after( '<div class="row-fluid text-center" >' +
                                 '<div id="flash_'+item.type+'" class="alert alert-'+item.type+'">'+item.message+'</div>' +
                                 '</div>');
-
                         }
                     });
                     $("#books-table").bootstrapTable("refresh");
                 }
             });
         } else {
-            postButton(event, getPath() + "/delete/" + deleteId);
+            var loc = sessionStorage.getItem("back");
+            if (!loc) {
+                loc = $(this).data("back");
+            }
+            sessionStorage.removeItem("back");
+            postButton(event, getPath() + "/delete/" + deleteId, location=loc);
         }
     }
-
 });
 
 //triggered when modal is about to be shown
@@ -333,7 +369,6 @@ $(function() {
                 } else {
                     $("#parent").addClass('hidden')
                 }
-                // console.log(data);
                 data.files.forEach(function(entry) {
                     if(entry.type === "dir") {
                         var type = "<span class=\"glyphicon glyphicon-folder-close\"></span>";
@@ -542,6 +577,7 @@ $(function() {
             $.get(e.relatedTarget.href).done(function(content) {
                 $modalBody.html(content);
                 preFilters.remove(useCache);
+                $("#back").remove();
             });
         })
         .on("hidden.bs.modal", function() {
@@ -588,6 +624,7 @@ $(function() {
     });
 
     $("#toggle_order_shelf").click(function() {
+        $("#toggle_order_shelf").toggleClass("dummy");
         $("#new").toggleClass("disabled");
         $("#old").toggleClass("disabled");
         $("#asc").toggleClass("disabled");
@@ -596,9 +633,20 @@ $(function() {
         $("#auth_za").toggleClass("disabled");
         $("#pub_new").toggleClass("disabled");
         $("#pub_old").toggleClass("disabled");
+        $("#shelf_new").toggleClass("disabled");
+        $("#shelf_old").toggleClass("disabled");
         var alternative_text = $("#toggle_order_shelf").data('alt-text');
+        var status = $("#toggle_order_shelf").hasClass("dummy") ? "on" : "off";
         $("#toggle_order_shelf").data('alt-text', $("#toggle_order_shelf").html());
         $("#toggle_order_shelf").html(alternative_text);
+
+        $.ajax({
+            method:"post",
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            url: getPath() + "/ajax/view",
+            data: "{\"shelf\": {\"man\": \"" + status + "\"}}",
+        });
     });
 
     $("#btndeluser").click(function() {
@@ -622,8 +670,12 @@ $(function() {
            "btnfullsync",
             "GeneralDeleteModal",
             $(this).data('value'),
-            function(value){
-                path = getPath() + "/ajax/fullsync"
+            function(userid) {
+                if (userid) {
+                    path = getPath() + "/ajax/fullsync/" + userid
+                } else {
+                    path = getPath() + "/ajax/fullsync"
+                }
                 $.ajax({
                     method:"post",
                     url: path,
@@ -676,20 +728,20 @@ $(function() {
             url: getPath() + "/ajax/simulatedbchange",
             data: {config_calibre_dir: $("#config_calibre_dir").val(), csrf_token: $("input[name='csrf_token']").val()},
             success: function success(data) {
-                if ( data.change ) {
-                    if ( data.valid ) {
+                if ( !data.valid ) {
+                    $("#InvalidDialog").modal('show');
+                }
+                else{
+                    if ( data.change ) {
                         confirmDialog(
                             "db_submit",
                             "GeneralChangeModal",
                             0,
                             changeDbSettings
                         );
-                    }
-                    else {
-                        $("#InvalidDialog").modal('show');
-                    }
-                } else {
+                    } else {
                     changeDbSettings();
+                   }
                 }
             }
         });

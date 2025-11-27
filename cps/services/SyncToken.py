@@ -19,10 +19,8 @@
 
 import sys
 from base64 import b64decode, b64encode
-from jsonschema import validate, exceptions, __version__
-from datetime import datetime, timezone
-
-from urllib.parse import unquote
+from jsonschema import validate, exceptions
+from datetime import datetime
 
 from flask import json
 from .. import logger
@@ -32,10 +30,10 @@ log = logger.create()
 
 
 def b64encode_json(json_data):
-    return b64encode(json.dumps(json_data).encode())
+    return b64encode(json.dumps(json_data).encode()).decode("utf-8")
 
 
-# Python3 has a timestamp() method we could be calling, however it's not avaiable in python2.
+# Python3 has a timestamp() method we could be calling, however it's not available in python2.
 def to_epoch_timestamp(datetime_object):
     return (datetime_object - datetime(1970, 1, 1)).total_seconds()
 
@@ -49,7 +47,7 @@ def get_datetime_from_json(json_object, field_name):
 
 
 class SyncToken:
-    """ The SyncToken is used to persist state accross requests.
+    """ The SyncToken is used to persist state across requests.
     When serialized over the response headers, the Kobo device will propagate the token onto following
     requests to the service. As an example use-case, the SyncToken is used to detect books that have been added
     to the library since the last time the device synced to the server.
@@ -175,8 +173,8 @@ class SyncToken:
 
     def __str__(self):
         return "{},{},{},{},{},{}".format(self.books_last_created,
-                                       self.books_last_modified,
-                                       self.archive_last_modified,
-                                       self.reading_state_last_modified,
-                                       self.tags_last_modified,
-                                       self.raw_kobo_store_token)
+                                          self.books_last_modified,
+                                          self.archive_last_modified,
+                                          self.reading_state_last_modified,
+                                          self.tags_last_modified,
+                                          self.raw_kobo_store_token)

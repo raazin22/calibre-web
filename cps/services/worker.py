@@ -199,7 +199,7 @@ class CalibreTask:
             self.run(*args)
         except Exception as ex:
             self._handleError(str(ex))
-            log.error_or_exception(ex)
+            log.exception(ex)
 
         self.end_time = datetime.now()
 
@@ -266,3 +266,6 @@ class CalibreTask:
     def _handleSuccess(self):
         self.stat = STAT_FINISH_SUCCESS
         self.progress = 1
+
+    def __str__(self):
+        return self.name
